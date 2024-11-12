@@ -232,6 +232,7 @@ function getHandler(options, proxy) {
     };
 
     return function (req, res) {
+        console.log(req.url);
         req.corsAnywhereRequestState = {
             getProxyForUrl: corsAnywhere.getProxyForUrl,
             maxRedirects: corsAnywhere.maxRedirects,
@@ -301,7 +302,9 @@ function getHandler(options, proxy) {
                     res.end(e.message);
                     return;
                 }
-                const url = uri.searchParams.get("url");
+                const url = (uri.searchParams.get("url") ?? "").replace(web_server_url, m3u8_server_url);
+                console.log("requested ", web_server_url);
+                console.log("proxied ", url);
                 return proxyM3U8(url ?? "", headers, res);
             } else if (uri.pathname === "/ts-proxy") {
                 let headers = {};
@@ -312,9 +315,9 @@ function getHandler(options, proxy) {
                     res.end(e.message);
                     return;
                 }
-                const url = uri.searchParams.get("url");
+                const url = (uri.searchParams.get("url") ?? "").replace(web_server_url, ts_server_url);
                 return proxyTs(url ?? "", headers, req, res);
-            } else if (uri.pathname === "/") {
+            } else if (uri.pathname.startsWith("/")) {
                 return res.end(readFileSync(join(__dirname, "../index.html")));
             } else {
                 res.writeHead(404, "Invalid host", cors_headers);
@@ -434,6 +437,8 @@ function createServer(options) {
 const host = process.env.HOST || "0.0.0.0";
 const port = process.env.PORT || 8080;
 const web_server_url = process.env.PUBLIC_URL || `http://${host}:${port}`;
+const m3u8_server_url = process.env.M3U8_SERVER_URL || `http:/localhost:3030`;
+const ts_server_url = process.env.TS_SERVER_URL || m3u8_server_url;
 
 export default function server() {
     const originBlacklist = parseEnvList(process.env.CORSANYWHERE_BLACKLIST);
@@ -471,6 +476,8 @@ export default function server() {
         },
     }).listen(port, Number(host), function () {
         console.log(colors.green("Server running on ") + colors.blue(`${web_server_url}`));
+        console.log(colors.green("M3U8 Server is ") + colors.blue(`${m3u8_server_url}`));
+        console.log(colors.green("TS Server is ") + colors.blue(`${ts_server_url}`));
     });
 }
 
@@ -570,17 +577,20 @@ export async function proxyM3U8(url: string, headers: any, res: http.ServerRespo
         // So if there is 360p, 480p, etc. Instead, the URL's of those m3u8 files will be replaced with the proxy URL.
         const lines = m3u8.split("\n");
         const newLines: string[] = [];
-        for (const line of lines) {
+        for (const original_line of lines) {
+            const line = original_line.replace(m3u8_server_url, web_server_url);
             if (line.startsWith("#")) {
                 if (line.startsWith("#EXT-X-KEY:")) {
                     const regex = /https?:\/\/[^\""\s]+/g;
+                    console.log("line ", line);
                     const url = `${web_server_url}${"/ts-proxy?url=" + encodeURIComponent(regex.exec(line)?.[0] ?? "") + "&headers=" + encodeURIComponent(JSON.stringify(headers))}`;
                     newLines.push(line.replace(regex, url));
                 } else {
                     newLines.push(line);
                 }
             } else {
-                const uri = new URL(line, url);
+                const uri = new URL(line, url.replace(m3u8_server_url, web_server_url));
+                console.log("uri line ", uri);
                 newLines.push(`${web_server_url + "/m3u8-proxy?url=" + encodeURIComponent(uri.href) + "&headers=" + encodeURIComponent(JSON.stringify(headers))}`);
             }
         }
@@ -599,7 +609,8 @@ export async function proxyM3U8(url: string, headers: any, res: http.ServerRespo
         // Deals with each individual quality. Replaces the TS files with the proxy URL.
         const lines = m3u8.split("\n");
         const newLines: string[] = [];
-        for (const line of lines) {
+        for (const original_line of lines) {
+            const line = original_line.replace(ts_server_url, web_server_url);
             if (line.startsWith("#")) {
                 if (line.startsWith("#EXT-X-KEY:")) {
                     const regex = /https?:\/\/[^\""\s]+/g;
@@ -609,7 +620,7 @@ export async function proxyM3U8(url: string, headers: any, res: http.ServerRespo
                     newLines.push(line);
                 }
             } else {
-                const uri = new URL(line, url);
+                const uri = new URL(line, url.replace(ts_server_url, web_server_url));
                 // CORS is needed since the TS files are not on the same domain as the client.
                 // This replaces each TS file to use a TS proxy with the headers attached.
                 // So each TS request will use the headers inputted to the proxy

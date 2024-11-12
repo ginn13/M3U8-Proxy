@@ -1,7 +1,7 @@
 <!DOCTYPE HTML>
 <html>
     <head>
-        <title>Eltik's M3U8 Proxy</title>
+        <title>M3U8 Proxy</title>
         <meta charset="utf-8">
         <meta name="title" content="Eltik's M3U8 Proxy" />
         <meta name="description" content="Playground for testing Eltik's m3u8 proxy." />
@@ -17,6 +17,7 @@
         <meta property="twitter:title" content="Eltik's M3U8 Proxy"/>
         <meta property="twitter:description" content="Playground for testing Eltik's m3u8 proxy." />
         <meta property="twitter:image" content="" />
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.3.1/dist/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
         <style>
             video {
                 width: 100%;
@@ -25,19 +26,24 @@
         </style>
     </head>
     <body>
-        <h1>Very bad playground design but its fine</h1>
-        <p>basically put in an m3u8 for the url, and put stringified headers into the headers section. yeah thats it.</p>
+        <h1>DevOops stream</h1>
+        <!-- <p>basically put in an m3u8 for the url, and put stringified headers into the headers section. yeah thats it.</p> -->
         <label for="url">URL</label>
-        <input type="text" id="url" value="https://ojkx.vizcloud.co/simple/EqPFJvsQWADtjDlGha7rC8UurFwHuLiwTk17rqk+wYMnU94US2El_Po4w12gXe6GptOSQtc/br/list.m3u8#.mp4" />
-        <label for="headers">Headers</label>
-        <textarea id="headers">{"referer": "https://9anime.pl"}</textarea>
-        <button onclick="test()">Test</button>
+        <input type="text" id="url" value="https://www.site.com/list.m3u8" />
+        <!-- <label for="headers">Headers</label> -->
+        <!-- <textarea id="headers">{}</textarea> -->
+        <button onclick="play()">Play</button>
         <video id="hls" controls></video>
         <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
         <script>
-            function test() {
+            console.log(window.location.href);
+            document.getElementById('url').value = window.location.href;
+            
+            function play() {
                 const url = document.getElementById('url').value;
-                let headers = document.getElementById('headers').value;
+                // const url = window.location.href;
+                // let headers = document.getElementById('headers').value;
+                let headers = "{}";
 
                 try {
                     headers = JSON.parse(headers);
